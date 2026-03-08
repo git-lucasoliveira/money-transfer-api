@@ -4,6 +4,7 @@ import com.exemplo.moneytransferapi.domain.TipoUsuario;
 import com.exemplo.moneytransferapi.domain.Usuario;
 import com.exemplo.moneytransferapi.repository.TransferenciaRepository;
 import com.exemplo.moneytransferapi.repository.UsuariosRepository;
+import com.exemplo.moneytransferapi.security.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,29 +17,23 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class TransferenciaControllerIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private UsuariosRepository usuariosRepository;
-
-    @Autowired
-    private TransferenciaRepository transferenciaRepository;
-
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UsuariosRepository usuariosRepository;
+    @Autowired private TransferenciaRepository transferenciaRepository;
+    @Autowired private BCryptPasswordEncoder passwordEncoder;
+    @Autowired private TokenService tokenService;
 
     private Long idPagador;
     private Long idRecebedor;
+    private String token;
 
     @BeforeEach
     void setup() {
@@ -59,6 +54,7 @@ class TransferenciaControllerIntegrationTest {
 
         idPagador = pagador.getId();
         idRecebedor = recebedor.getId();
+        token = "Bearer " + tokenService.gerarToken(pagador);
     }
 
     @Test
@@ -73,6 +69,7 @@ class TransferenciaControllerIntegrationTest {
 
         mockMvc.perform(post("/transferencias")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", token)
                         .content(payload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.valor").value(100.00));
@@ -90,6 +87,7 @@ class TransferenciaControllerIntegrationTest {
 
         mockMvc.perform(post("/transferencias")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", token)
                         .content(payload))
                 .andExpect(status().isBadRequest());
     }
@@ -106,6 +104,7 @@ class TransferenciaControllerIntegrationTest {
 
         mockMvc.perform(post("/transferencias")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", token)
                         .content(payload))
                 .andExpect(status().isNotFound());
     }
@@ -122,8 +121,31 @@ class TransferenciaControllerIntegrationTest {
 
         mockMvc.perform(post("/transferencias")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", token)
                         .content(payload))
                 .andExpect(status().isBadRequest());
     }
-}
 
+    @Test
+    void deveRetornar401SemToken() throws Exception {
+        String payload = """
+                {
+                  "idPagador": %d,
+                  "idRecebedor": %d,
+                  "valor": 100.00
+                }
+                """.formatted(idPagador, idRecebedor);
+
+        mockMvc.perform(post("/transferencias")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deveListarTransferencias() throws Exception {
+        mockMvc.perform(get("/transferencias")
+                        .header("Authorization", token))
+                .andExpect(status().isOk());
+    }
+}
