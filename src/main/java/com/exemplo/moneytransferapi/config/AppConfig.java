@@ -1,15 +1,4 @@
 package com.exemplo.moneytransferapi.config;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
-@Configuration
-public class AppConfig {
-
-    @Bean
-    public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-}
-
+// SecurityConfig.java contém toda a configuração de segurança.
+// Este arquivo foi mantido apenas para referência histórica e pode ser removido.
