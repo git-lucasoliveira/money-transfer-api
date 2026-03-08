@@ -6,8 +6,10 @@ Uma API RESTful desenvolvida em Java 21 com Spring Boot para simulação de tran
 
 - **Java 21:** Sintaxe moderna com _Java Records_ para DTOs.
 - **Spring Boot 3:** Autoconfiguração, IoC e ambiente web embarcado (Tomcat).
+- **Spring Security + JWT:** Autenticação stateless via token Bearer.
 - **Spring Data JPA & Hibernate:** Persistência relacional sem boilerplate SQL.
 - **PostgreSQL:** Banco de dados relacional robusto e de mercado.
+- **Flyway:** Versionamento e migração do banco de dados.
 - **BCrypt:** Hash seguro de senhas — nunca armazenadas em texto puro.
 - **Lombok:** Redução de boilerplate code (Getters, Setters, Construtores).
 - **Bean Validation:** Validação de dados de entrada via anotações (`@NotNull`, `@Positive`).
@@ -140,7 +142,28 @@ O Hibernate cria as tabelas automaticamente no primeiro boot via `ddl-auto=updat
 
 ## 📡 Endpoints
 
-### `POST /usuarios` — Cadastrar usuário
+### `POST /auth/login` — Autenticar e obter token JWT
+
+**Request body:**
+```json
+{
+  "email": "ana@email.com",
+  "senha": "minhasenha123"
+}
+```
+
+**Resposta de sucesso `200 OK`:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+> Use o token nas próximas requisições no header: `Authorization: Bearer <token>`
+
+---
+
+### `POST /usuarios` — Cadastrar usuário _(público)_
 
 **Request body:**
 ```json
@@ -170,7 +193,23 @@ O Hibernate cria as tabelas automaticamente no primeiro boot via `ddl-auto=updat
 
 ---
 
-### `POST /transferencias` — Realizar uma transferência
+### `GET /usuarios/{id}` — Buscar usuário por ID 🔒
+
+**Resposta de sucesso `200 OK`:**
+```json
+{
+  "id": 1,
+  "nomeCompleto": "Ana Silva",
+  "email": "ana@email.com",
+  "cpf": "111.111.111-11",
+  "tipo": "COMUM",
+  "saldo": 1000.00
+}
+```
+
+---
+
+### `POST /transferencias` — Realizar uma transferência 🔒
 
 **Request body:**
 ```json
@@ -188,28 +227,38 @@ O Hibernate cria as tabelas automaticamente no primeiro boot via `ddl-auto=updat
   "idPagador": 1,
   "idRecebedor": 2,
   "valor": 50.00,
-  "dataTransferencia": "2026-03-07T14:30:15.123"
+  "dataTransferencia": "2026-03-08T18:30:00.000"
 }
-```
-
-**Resposta de erro `404 Not Found`:**
-```text
-Pagador não encontrado.
-```
-
-**Resposta de erro `400 Bad Request` (saldo insuficiente):**
-```text
-Saldo insuficiente na conta do pagador.
 ```
 
 ---
 
-## 🗒️ Dívidas Técnicas (próximos passos)
+### `GET /transferencias` — Listar histórico de transferências 🔒
 
-- [x] ~~Hash de senha com **BCrypt**~~ ✅
-- [x] ~~Endpoint de **cadastro de usuários** via API~~ ✅
-- [x] ~~Testes de integração com banco em memória (**H2**)~~ ✅
-- [ ] **Autenticação JWT** para proteger os endpoints
-- [ ] Migração do banco com **Flyway** no lugar do `ddl-auto=update`
-- [ ] Endpoint `GET /usuarios/{id}` para consultar usuário
-- [ ] Endpoint `GET /transferencias` para listar histórico
+**Resposta de sucesso `200 OK`:**
+```json
+[
+  {
+    "id": 1,
+    "idPagador": 1,
+    "idRecebedor": 2,
+    "valor": 50.00,
+    "dataTransferencia": "2026-03-08T18:30:00.000"
+  }
+]
+```
+
+> 🔒 Endpoints marcados exigem o header `Authorization: Bearer <token>`
+
+---
+## 📌 Considerações Finais
+
+Este projeto foi construído como um exercício prático para consolidar conceitos de back-end com Java e Spring Boot. A ideia foi ir além do "hello world" e trabalhar com um domínio real: transferências financeiras, com regras de negócio, segurança e testes.
+
+Algumas decisões foram tomadas conscientemente por se tratar de um MVP de aprendizado:
+
+- O JWT foi implementado sem refresh token — em produção, isso seria necessário para não forçar o usuário a fazer login a cada 2 horas.
+- O Flyway gerencia as migrações, mas ainda não há scripts de rollback (`V1__undo`).
+- Não há paginação no `GET /transferencias` — com volume alto de dados, isso seria obrigatório.
+
+Foi um projeto que cresceu bastante ao longo do desenvolvimento e pretendo continuar evoluindo ele conforme avanço nos estudos.
