@@ -20,5 +20,9 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponseDTO> cadastrar(@Valid @RequestBody UsuarioRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.cadastrar(dto));
     }
-}
 
+    @GetMapping("/{id}")
+    public ResponseEntity<UsuarioResponseDTO> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(usuarioService.buscarPorId(id));
+    }
+}
