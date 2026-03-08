@@ -31,7 +31,8 @@ public class Usuario {
     private String cpf;
 
     @Column(nullable = false)
-    private String tipo;
+    @Enumerated(EnumType.STRING)
+    private TipoUsuario tipo;
 
     @Column(nullable = false)
     private BigDecimal saldo;
