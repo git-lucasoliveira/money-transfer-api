@@ -8,9 +8,11 @@ Uma API RESTful desenvolvida em Java 21 com Spring Boot para simulação de tran
 - **Spring Boot 3:** Autoconfiguração, IoC e ambiente web embarcado (Tomcat).
 - **Spring Data JPA & Hibernate:** Persistência relacional sem boilerplate SQL.
 - **PostgreSQL:** Banco de dados relacional robusto e de mercado.
+- **BCrypt:** Hash seguro de senhas — nunca armazenadas em texto puro.
 - **Lombok:** Redução de boilerplate code (Getters, Setters, Construtores).
 - **Bean Validation:** Validação de dados de entrada via anotações (`@NotNull`, `@Positive`).
 - **JUnit 5 + Mockito:** Testes unitários com isolamento completo da camada de banco.
+- **H2 Database:** Banco em memória para testes de integração.
 
 ---
 
@@ -18,12 +20,13 @@ Uma API RESTful desenvolvida em Java 21 com Spring Boot para simulação de tran
 
 Estrutura baseada na **MVC Layered Architecture**:
 
-1. **`domain` (Entidades):** `Usuario` e `Transferencia` mapeadas para o banco. O campo `tipo` usa o enum `TipoUsuario` (`COMUM` ou `LOJISTA`) com `@Enumerated(EnumType.STRING)` para garantir valores válidos.
-2. **`repository` (Acesso a Dados):** Interfaces herdeiras de `JpaRepository`, responsáveis pelas consultas ao banco.
-3. **`service` (Regras de Negócio):** Cérebro da aplicação. Operações com `BigDecimal`, validação de saldo, regra de lojista e atomicidade via `@Transactional`.
-4. **`controller` (Apresentação Web):** Porta de entrada HTTP. Valida o payload com `@Valid` e retorna um `TransferenciaResponseDTO` — sem expor dados sensíveis do usuário.
-5. **`dto` (Transferência de Dados):** `TransferenciaRequestDTO` valida os dados de entrada. `TransferenciaResponseDTO` controla exatamente o que a API devolve ao cliente.
-6. **`exception` (Tratamento Global):** `@RestControllerAdvice` intercepta cada exceção customizada e retorna o HTTP status semântico correto.
+1. **`config`:** Configurações do Spring (ex: Bean do `BCryptPasswordEncoder`).
+2. **`domain` (Entidades):** `Usuario` e `Transferencia` mapeadas para o banco. O campo `tipo` usa o enum `TipoUsuario` (`COMUM` ou `LOJISTA`) com `@Enumerated(EnumType.STRING)` para garantir valores válidos.
+3. **`repository` (Acesso a Dados):** Interfaces herdeiras de `JpaRepository`, responsáveis pelas consultas ao banco.
+4. **`service` (Regras de Negócio):** Cérebro da aplicação. Operações com `BigDecimal`, validação de saldo, regra de lojista e atomicidade via `@Transactional`.
+5. **`controller` (Apresentação Web):** Porta de entrada HTTP. Valida o payload com `@Valid` e retorna DTOs — sem expor dados sensíveis.
+6. **`dto` (Transferência de Dados):** DTOs de request validam entrada, DTOs de response controlam o que a API devolve ao cliente.
+7. **`exception` (Tratamento Global):** `@RestControllerAdvice` intercepta cada exceção customizada e retorna o HTTP status semântico correto.
 
 ---
 
@@ -38,6 +41,7 @@ Estrutura baseada na **MVC Layered Architecture**:
 | **Validação de entrada** | `valor` negativo ou nulo é rejeitado antes de chegar na regra de negócio |
 | **Dados únicos** | CPF e e-mail possuem `@Column(unique=true)` — sem duplicatas no banco |
 | **Precisão financeira** | `BigDecimal` em todas as operações monetárias — sem perda de precisão de `float`/`double` |
+| **Senha segura** | Senhas são hasheadas com **BCrypt** antes de persistir no banco |
 
 ---
 
@@ -54,13 +58,22 @@ Estrutura baseada na **MVC Layered Architecture**:
 
 ## 🧪 Cobertura de Testes
 
-5 cenários unitários cobrindo os fluxos do `TransferenciaService`:
-
-- ✅ Transferência realizada com sucesso (saldos debitados e creditados corretamente)
+### Testes Unitários (TransferenciaService)
+- ✅ Transferência realizada com sucesso
 - ✅ Erro ao tentar transferir com saldo insuficiente
 - ✅ Erro quando o pagador não existe no banco
 - ✅ Erro quando o recebedor não existe no banco
 - ✅ Erro quando o pagador é um lojista
+
+### Testes de Integração (Controllers + H2)
+- ✅ `POST /transferencias` — transferência válida retorna 200
+- ✅ `POST /transferencias` — valor negativo retorna 400
+- ✅ `POST /transferencias` — pagador inexistente retorna 404
+- ✅ `POST /transferencias` — saldo insuficiente retorna 400
+- ✅ `POST /usuarios` — cadastro válido retorna 201
+- ✅ `POST /usuarios` — email inválido retorna 400
+- ✅ `POST /usuarios` — saldo negativo retorna 400
+- ✅ `POST /usuarios` — cadastro de lojista funciona
 
 ---
 
@@ -71,17 +84,35 @@ Estrutura baseada na **MVC Layered Architecture**:
 - Maven instalado (ou use o cache do wrapper em `~/.m2`)
 - PostgreSQL rodando localmente na porta `5432`
 
-### 1️⃣ Setup do Banco de Dados
-1. No `pgAdmin`, crie um banco chamado exatamente: **`money_transfer_db`**
-2. Verifique as credenciais em `src/main/resources/application.properties`:
+### 1️⃣ Variáveis de Ambiente
 
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/money_transfer_db
-spring.datasource.username=postgres
-spring.datasource.password=sua_senha_aqui
+O projeto usa variáveis de ambiente para configuração. Crie um arquivo `.env` ou configure no sistema:
+
+| Variável | Descrição | Valor padrão |
+|---|---|---|
+| `DB_URL` | URL de conexão JDBC | `jdbc:postgresql://localhost:5432/money_transfer_db` |
+| `DB_USER` | Usuário do banco | `postgres` |
+| `DB_PASSWORD` | Senha do banco | `admin` |
+
+**Exemplo no Windows (PowerShell):**
+```powershell
+$env:DB_URL = "jdbc:postgresql://localhost:5432/money_transfer_db"
+$env:DB_USER = "postgres"
+$env:DB_PASSWORD = "sua_senha"
 ```
 
-### 2️⃣ Rodando a Aplicação
+**Exemplo no Linux/Mac:**
+```bash
+export DB_URL="jdbc:postgresql://localhost:5432/money_transfer_db"
+export DB_USER="postgres"
+export DB_PASSWORD="sua_senha"
+```
+
+### 2️⃣ Setup do Banco de Dados
+1. No `pgAdmin`, crie um banco chamado exatamente: **`money_transfer_db`**
+2. As variáveis de ambiente sobrescrevem o `application.properties` automaticamente
+
+### 3️⃣ Rodando a Aplicação
 
 ```bash
 # Linux/Mac
@@ -93,7 +124,7 @@ spring.datasource.password=sua_senha_aqui
 
 O Hibernate cria as tabelas automaticamente no primeiro boot via `ddl-auto=update`.
 
-### 3️⃣ Rodando os Testes
+### 4️⃣ Rodando os Testes
 
 ```bash
 # Linux/Mac
@@ -103,9 +134,41 @@ O Hibernate cria as tabelas automaticamente no primeiro boot via `ddl-auto=updat
 .\mvnw.cmd test
 ```
 
+> Os testes de integração usam banco H2 em memória — não precisam de PostgreSQL rodando.
+
 ---
 
 ## 📡 Endpoints
+
+### `POST /usuarios` — Cadastrar usuário
+
+**Request body:**
+```json
+{
+  "nomeCompleto": "Ana Silva",
+  "email": "ana@email.com",
+  "senha": "minhasenha123",
+  "cpf": "111.111.111-11",
+  "tipo": "COMUM",
+  "saldo": 1000.00
+}
+```
+
+**Resposta de sucesso `201 Created`:**
+```json
+{
+  "id": 1,
+  "nomeCompleto": "Ana Silva",
+  "email": "ana@email.com",
+  "cpf": "111.111.111-11",
+  "tipo": "COMUM",
+  "saldo": 1000.00
+}
+```
+
+> ⚠️ A senha **não** é retornada na resposta — é armazenada com hash BCrypt.
+
+---
 
 ### `POST /transferencias` — Realizar uma transferência
 
@@ -130,27 +193,23 @@ O Hibernate cria as tabelas automaticamente no primeiro boot via `ddl-auto=updat
 ```
 
 **Resposta de erro `404 Not Found`:**
-```json
-{
-  "status": 404,
-  "mensagem": "Pagador não encontrado."
-}
+```text
+Pagador não encontrado.
 ```
 
-**Resposta de erro `422 Unprocessable Entity`:**
-```json
-{
-  "status": 422,
-  "mensagem": "Saldo insuficiente na conta do pagador."
-}
+**Resposta de erro `400 Bad Request` (saldo insuficiente):**
+```text
+Saldo insuficiente na conta do pagador.
 ```
 
 ---
 
 ## 🗒️ Dívidas Técnicas (próximos passos)
 
-- [ ] Hash de senha com **BCrypt** — hoje a senha é salva em texto puro
-- [ ] Endpoint de **cadastro de usuários** via API (hoje é feito direto no banco)
+- [x] ~~Hash de senha com **BCrypt**~~ ✅
+- [x] ~~Endpoint de **cadastro de usuários** via API~~ ✅
+- [x] ~~Testes de integração com banco em memória (**H2**)~~ ✅
 - [ ] **Autenticação JWT** para proteger os endpoints
 - [ ] Migração do banco com **Flyway** no lugar do `ddl-auto=update`
-- [ ] Testes de integração com banco em memória (**H2**)
+- [ ] Endpoint `GET /usuarios/{id}` para consultar usuário
+- [ ] Endpoint `GET /transferencias` para listar histórico
