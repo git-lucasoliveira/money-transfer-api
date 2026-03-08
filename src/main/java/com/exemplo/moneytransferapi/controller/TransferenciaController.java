@@ -3,6 +3,7 @@ package com.exemplo.moneytransferapi.controller;
 import com.exemplo.moneytransferapi.domain.Transferencia;
 import com.exemplo.moneytransferapi.dto.TransferenciaRequestDTO;
 import com.exemplo.moneytransferapi.service.TransferenciaService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +18,7 @@ public class TransferenciaController {
     // Essa anotação diz "Quando a internet mandar um HTTP POST (um json de criar
     // algo) pra cá, execute esse método"
     @PostMapping
-    public ResponseEntity<Transferencia> realizarTransferencia(@RequestBody TransferenciaRequestDTO dto) {
+    public ResponseEntity<Transferencia> realizarTransferencia(@Valid @RequestBody TransferenciaRequestDTO dto) {
 
         Transferencia tr = transferenciaService.realizarTransferencia(
                 dto.idPagador(),
