@@ -3,7 +3,7 @@ package com.exemplo.moneytransferapi.service;
 import com.exemplo.moneytransferapi.domain.TipoUsuario;
 import com.exemplo.moneytransferapi.domain.Transferencia;
 import com.exemplo.moneytransferapi.domain.Usuario;
-import com.exemplo.moneytransferapi.exception.SaldoInsuficienteExeception;
+import com.exemplo.moneytransferapi.exception.SaldoInsuficienteException;
 import com.exemplo.moneytransferapi.exception.UsuarioNotFoundException;
 import com.exemplo.moneytransferapi.repository.TransferenciaRepository;
 import com.exemplo.moneytransferapi.repository.UsuariosRepository;
@@ -24,20 +24,20 @@ public class TransferenciaService {
 
     @Transactional
     public Transferencia realizarTransferencia(Long idPagador, Long idRecebedor, BigDecimal valor) {
-        
+
         // 1. Busca os usuários (Se não achar, erro usando o orElseThrow)
         Usuario pagador = usuariosRepository.findById(idPagador)
                 .orElseThrow(() -> new UsuarioNotFoundException("Pagador não encontrado."));
         if (pagador.getTipo() == TipoUsuario.LOJISTA) {
             throw new RuntimeException("Lojistas não podem realizar transferências.");
         }
-                
+
         Usuario recebedor = usuariosRepository.findById(idRecebedor)
                 .orElseThrow(() -> new UsuarioNotFoundException("Recebedor não encontrado."));
 
         // 2. Valida o Saldo (O método compareTo do BigDecimal retorna -1 se for menor)
         if (pagador.getSaldo().compareTo(valor) < 0) {
-            throw new SaldoInsuficienteExeception("Saldo insuficiente na conta do pagador.");
+            throw new SaldoInsuficienteException("Saldo insuficiente na conta do pagador.");
         }
 
         pagador.setSaldo(pagador.getSaldo().subtract(valor));

@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler
-    public ResponseEntity<String> handleSaldoInsuficienteException(SaldoInsuficienteExeception ex) {
+    public ResponseEntity<String> handleSaldoInsuficienteException(SaldoInsuficienteException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
 
@@ -32,9 +32,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler
-    public ResponseEntity<String> MethodArgumentNotValidException (MethodArgumentNotValidException ex) {
+    public ResponseEntity<String> MethodArgumentNotValidException(MethodArgumentNotValidException ex) {
         String errorMessage = ex.getBindingResult().getAllErrors().getFirst().getDefaultMessage();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage);
     }
 }
-
