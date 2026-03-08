@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service // Ensina o Spring que isso é o cérebro das regras de negócio
 @RequiredArgsConstructor // Usa o Lombok para injetar os Repositórios magicamente!
@@ -55,5 +56,9 @@ public class TransferenciaService {
 
         return transferenciaRepository.save(transferencia);
 
+    }
+
+    public List<Transferencia> listarTodas() {
+        return transferenciaRepository.findAll();
     }
 }
